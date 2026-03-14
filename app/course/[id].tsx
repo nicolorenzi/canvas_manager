@@ -1,9 +1,10 @@
 import { getAssignments } from '@/utils/canvasApi';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// Assignment data from Canvas API
 interface Assignment {
   id: number;
   name: string;
@@ -12,35 +13,31 @@ interface Assignment {
   html_url: string;
 }
 
+// Displays all assignments for a specific course
 export default function CourseDetailScreen() {
   const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
-  const router = useRouter();
 
-  useEffect(() => {
-    if (id) {
-      fetchCourseAssignments();
-    }
-  }, [id]);
-
-  const fetchCourseAssignments = async () => {
+  // Fetches all assignments for the current course
+  const fetchCourseAssignments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const courseAssignments = await getAssignments(id!);
       
-      const allAssignments = courseAssignments.map((assignment: any) => ({
+      // Add course_id to each assignment
+      const assignmentsWithCourseId = courseAssignments.map((assignment: any) => ({
         ...assignment,
         course_id: parseInt(id!)
       }));
 
-      // Sort by due date (upcoming first, expired at bottom)
+      // Sort assignments: upcoming first, then by due date, expired at bottom
       const now = new Date();
-      allAssignments.sort((a: Assignment, b: Assignment) => {
+      assignmentsWithCourseId.sort((a: Assignment, b: Assignment) => {
         if (!a.due_at && !b.due_at) return 0;
         if (!a.due_at) return 1;
         if (!b.due_at) return -1;
@@ -50,15 +47,15 @@ export default function CourseDetailScreen() {
         const isAExpired = dateA < now;
         const isBExpired = dateB < now;
         
-        // If one is expired and one isn't, put expired at bottom
+        // Put expired assignments at bottom
         if (isAExpired && !isBExpired) return 1;
         if (!isAExpired && isBExpired) return -1;
         
-        // If both are expired or both are upcoming, sort by date
+        // Sort by date for same status assignments
         return dateA.getTime() - dateB.getTime();
       });
 
-      setAssignments(allAssignments);
+      setAssignments(assignmentsWithCourseId);
     } catch (err) {
       console.error('Error fetching course assignments:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch assignments';
@@ -66,8 +63,20 @@ export default function CourseDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
+  useEffect(() => {
+    if (id) {
+      fetchCourseAssignments();
+    }
+  }, [id, fetchCourseAssignments]);
+
+  /**
+   * Formats due date for display with appropriate status
+   * 
+   * @param dueDateString - The due date string from the API
+   * @returns A formatted string indicating due date and urgency
+   */
   const formatDueDate = (dueDateString: string) => {
     if (!dueDateString) return 'No due date';
     
@@ -76,19 +85,25 @@ export default function CourseDetailScreen() {
     const diffTime = dueDate.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    // Check if assignment is expired (past due)
+    // Check if assignment is expired
     if (diffDays < 0) {
       return 'Expired';
     }
     
     if (diffDays <= 2) {
       if (diffDays === 0) return 'Due today!!!';
-      else if (diffDays === 1) return 'Due tomorrow!!';
-      else return 'Due in 2 days!';
+      if (diffDays === 1) return 'Due tomorrow!!';
+      return 'Due in 2 days!';
     }
     return `Due in ${diffDays} days`;
   };
 
+  /**
+   * Gets the submission status of an assignment
+   * 
+   * @param assignment - The assignment object from the API
+   * @returns A string indicating submission status: "graded", "submitted", or "no_submission"
+   */
   const getAssignmentStatus = (assignment: any) => {
     if (assignment.submission) {
       const workflowState = assignment.submission.workflow_state;
@@ -98,6 +113,12 @@ export default function CourseDetailScreen() {
     return "no_submission";
   };
 
+  /**
+   * Gets the color for assignment status
+   * 
+   * @param status - The submission status of the assignment
+   * @returns A color string representing the status
+   */
   const getStatusColor = (status: string) => {
     switch (status) {
       case "graded": return "#27ae60"; // Green
@@ -107,6 +128,12 @@ export default function CourseDetailScreen() {
     }
   };
 
+  /**
+   * Gets the display text for assignment status
+   * 
+   * @param status - The submission status of the assignment
+   * @returns A string representing the status for display
+   */
   const getStatusText = (status: string) => {
     switch (status) {
       case "graded": return "Graded";
@@ -149,7 +176,7 @@ export default function CourseDetailScreen() {
           showsVerticalScrollIndicator={false}
         >
           {(() => {
-            // Check if all assignments are expired
+            // Check if all assignments are expired to determine separator placement
             const now = new Date();
             const hasCurrentAssignments = assignments.some(assignment => 
               !assignment.due_at || new Date(assignment.due_at) >= now
@@ -171,12 +198,13 @@ export default function CourseDetailScreen() {
                   const status = getAssignmentStatus(assignment);
                   const statusColor = getStatusColor(status);
                   
-                  // Check if this is the first expired assignment
+                  // Check if this is the first expired assignment for separator
                   const isExpired = assignment.due_at && new Date(assignment.due_at) < new Date();
                   const prevAssignment = index > 0 ? assignments[index - 1] : null;
                   const prevIsExpired = prevAssignment?.due_at && new Date(prevAssignment.due_at) < new Date();
                   const showExpiredSeparator = isExpired && !prevIsExpired && hasCurrentAssignments;
                   
+                  // Grey out expired assignments without due dates or past assignments
                   const shouldGreyOut = isExpired || (!assignment.due_at && index > 0 && assignments.slice(0, index).some(a => a.due_at && new Date(a.due_at) < new Date()));
                   
                   const borderColor = shouldGreyOut ? '#6c757d' : statusColor;

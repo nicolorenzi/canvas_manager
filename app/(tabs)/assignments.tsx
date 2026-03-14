@@ -4,12 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// Course data from Canvas API
 interface Course {
   id: number;
   name: string;
   enrollment_term_id?: number;
 }
 
+// Displays all courses for navigation
 export default function AssignmentsScreen() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,43 +23,35 @@ export default function AssignmentsScreen() {
     fetchCourses();
   }, []);
 
-  // Add refresh interval to prevent constant refetching
+  // Auto-refresh courses every 5 minutes
   useEffect(() => {
     const interval = setInterval(() => {
       fetchCourses();
-    }, 300000); // Refresh every 5 minutes
+    }, 300000); // 5 minutes
 
     return () => clearInterval(interval);
   }, []);
 
+  // Fetches courses for the current term
   const fetchCourses = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch all courses
       const allCourses = await getCourses();
-      const coursesData = [];
-      for (const course of allCourses) {
-        if (course.enrollment_term_id === 29) {
-          coursesData.push({ 
-            id: course.id, 
-            name: course.name,
-            enrollment_term_id: course.enrollment_term_id
-          });
-        }
-      }
-      setCourses(coursesData);
+      // Filter for current term courses
+      const currentTermCourses = allCourses.filter((course: Course) => course.enrollment_term_id === 29);
+      setCourses(currentTermCourses);
     } catch (err) {
       console.error('Error fetching courses:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch courses';
-      console.log('Full error details:', JSON.stringify(err, null, 2));
-      setError(`Network Error: ${errorMessage} Check console for details.`);
+      setError(`Network Error: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
   };
 
+  // Navigates to course detail screen
   const handleCoursePress = (course: Course) => {
     router.push({
       pathname: '/course/[id]',

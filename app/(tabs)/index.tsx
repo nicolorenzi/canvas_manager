@@ -1,9 +1,9 @@
-import { useNotifications } from '@/hooks/useNotifications';
 import { getAssignments, getCourses } from '@/utils/canvasApi';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// Assignment data from Canvas API
 interface Assignment {
   id: number;
   name: string;
@@ -12,66 +12,70 @@ interface Assignment {
   html_url: string;
 }
 
+// Interface for course data from Canvas API
 interface Course {
   id: number;
   name: string;
+  enrollment_term_id?: number;
 }
 
+// Displays assignments due within the next week
 export default function HomeScreen() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
-  const { scheduleAssignmentNotifications } = useNotifications();
 
-  useEffect(() => {
-    fetchAssignmentsDueThisWeek();
-  }, []);
+  /**
+   * Gets course name by ID
+   * 
+   * @param courseId - The ID of the course
+   * @returns The name of the course or a fallback string if not found
+   */
+  const getCourseName = useCallback((courseId: number) => {
+    const course = courses.find((c: Course) => c.id === courseId);
+    return course ? course.name : `Course ${courseId}`;
+  }, [courses]);
 
-  const fetchAssignmentsDueThisWeek = async () => {
+  /**
+   * Fetches assignments due within the next week
+   */
+  const fetchAssignmentsDueThisWeek = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch all courses
+      // Fetch courses for the current term
       const allCourses = await getCourses();
-      const coursesData = [];
-      for (const course of allCourses) {
-        if (course.enrollment_term_id === 29) coursesData.push({ id: course.id, name: course.name });
-      }
-      setCourses(coursesData);
+      const currentTermCourses = allCourses.filter((course: Course) => course.enrollment_term_id === 29);
+      setCourses(currentTermCourses);
 
-      // Fetch assignments for all courses
-      const allAssignments: Assignment[] = [];
-      
-      const coursePromises = coursesData.map(async (course) => {
+      // Fetch assignments for all courses concurrently
+      const assignmentPromises = currentTermCourses.map(async (course: Course) => {
         try {
           const courseAssignments = await getAssignments(course.id);
-          
-          // Filter assignments that include submission data
-          const unsubmittedAssignments = courseAssignments.filter((assignment: any) => {
-            // If submission data is included, check for submission status
-            if (assignment.submission) {
-              const workflowState = assignment.submission.workflow_state;
-              return workflowState !== "submitted" && workflowState !== "graded";
-            }
-            // If no submission data, assume it's unsubmitted
-            return true;
-          });
-
-          return unsubmittedAssignments.map((assignment: any) => ({
-            ...assignment,
-            course_id: course.id
-          }));
+          // Filter for unsubmitted assignments with submission data
+          return courseAssignments
+            .filter((assignment: any) => {
+              if (assignment.submission) {
+                const workflowState = assignment.submission.workflow_state;
+                return workflowState !== "submitted" && workflowState !== "graded";
+              }
+              return true; // Include if no submission data
+            })
+            .map((assignment: any) => ({
+              ...assignment,
+              course_id: course.id
+            }));
         } catch (courseError) {
           console.warn(`Failed to fetch assignments for course ${course.id}:`, courseError);
           return [];
         }
       });
 
-      const courseResults = await Promise.all(coursePromises);
-      courseResults.forEach(assignments => allAssignments.push(...assignments));
+      const assignmentResults = await Promise.all(assignmentPromises);
+      const allAssignments = assignmentResults.flat();
 
       // Filter assignments due within the next week
       const now = new Date();
@@ -80,7 +84,7 @@ export default function HomeScreen() {
       const upcomingAssignments = allAssignments.filter(assignment => {
         if (!assignment.due_at) return false;
         const dueDate = new Date(assignment.due_at);
-        return (dueDate >= now && dueDate <= nextWeek);
+        return dueDate >= now && dueDate <= nextWeek;
       });
 
       // Sort by due date (soonest first)
@@ -91,51 +95,37 @@ export default function HomeScreen() {
       });
 
       setAssignments(upcomingAssignments);
-
-      // Schedule notifications for upcoming assignments
-      upcomingAssignments.forEach(assignment => {
-        const courseName = getCourseName(assignment.course_id);
-        const dueDate = new Date(assignment.due_at);
-        
-        scheduleAssignmentNotifications(
-          assignment.id,
-          assignment.course_id,
-          assignment.name,
-          courseName,
-          dueDate
-        ).catch(error => {
-          console.warn(`Failed to schedule notifications for assignment ${assignment.name}:`, error);
-        });
-      });
     } catch (err) {
       console.error('Error fetching assignments:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch assignments';
-      console.log('Full error details:', JSON.stringify(err, null, 2));
-      setError(`Network Error: ${errorMessage} Check console for details.`);
+      setError(`Network Error: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  useEffect(() => {
+    fetchAssignmentsDueThisWeek();
+  }, [fetchAssignmentsDueThisWeek]);
+
+  /**
+   * Formats due date for display with urgency indicators
+   * 
+   * @param dueDateString - The due date string from the API
+   * @returns A formatted string indicating how soon the assignment is due
+   */
   const formatDueDate = (dueDateString: string) => {
     const dueDate = new Date(dueDateString);
     const now = new Date();
     const diffTime = dueDate.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    if (diffDays <= 2)
-    {
-      // Block apps 
+    if (diffDays <= 2) {
       if (diffDays === 0) return 'Due today!!!';
-      else if (diffDays === 1) return 'Due tomorrow!!';
-      else return 'Due in 2 days!';
+      if (diffDays === 1) return 'Due tomorrow!!';
+      return 'Due in 2 days!';
     }
     return `Due in ${diffDays} days`;
-  };
-
-  const getCourseName = (courseId: number) => {
-    const course = courses.find(c => c.id === courseId);
-    return course ? course.name : `Course ${courseId}`;
   };
 
   if (loading) {

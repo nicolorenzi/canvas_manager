@@ -1,50 +1,94 @@
-# Welcome to your Expo app 👋
+# Canvas Manager
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native mobile app for managing Canvas LMS assignments and courses. Built with Expo and TypeScript.
 
-## Get started
+## Features
 
-1. Install dependencies
+- 📚 View all your courses
+- 📝 Track assignments with due dates
+-  Cross-platform (iOS/Android)
+- 🎨 Clean, intuitive interface
 
+## Setup
+
+1. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. Start the app
-
-   ```bash
-   npx expo start
+2. **Environment Configuration**
+   
+   Create a `.env` file in the root directory with your Canvas API credentials:
+   ```env
+   EXPO_PUBLIC_CANVAS_BASE_URL=https://your-canvas-instance.instructure.com/api/v1
+   EXPO_PUBLIC_CANVAS_TOKEN=your_canvas_access_token
    ```
 
-In the output, you'll find options to open the app in a
+3. **Start the development server**
+   ```bash
+   npm start
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Getting Canvas API Access
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+1. Log into your Canvas instance
+2. Go to Account Settings → Approved Integrations
+3. Generate a new access token
+4. Add the token to your `.env` file
 
-## Get a fresh project
+## Building
 
-When you're ready, run:
+- **Android**: `npm run android`
+- **iOS**: `npm run ios`
+- **Web**: `npm run web`
 
-```bash
-npm run reset-project
+## Project Structure
+
+```
+app/
+├── _layout.tsx          # Root layout with theme provider
+├── (tabs)/              # Tab-based navigation
+│   ├── _layout.tsx      # Tab navigation setup
+│   ├── index.tsx        # Home screen (assignments due this week)
+│   ├── assignments.tsx  # Courses list
+│   └── settings.tsx     # App settings
+└── course/
+    └── [id].tsx         # Course detail screen
+
+components/
+├── ui/                  # Platform-specific UI components
+├── ThemedText.tsx       # Themed text component
+├── ThemedView.tsx       # Themed view component
+└── HapticTab.tsx        # Tab with haptic feedback
+
+hooks/
+├── useColorScheme.ts    # Theme detection
+└── useThemeColor.ts     # Themed color utilities
+
+utils/
+└── canvasApi.tsx        # Canvas LMS API client
+└── notificationService.ts # Push notification service
+
+constants/
+└── Colors.ts            # App color scheme
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Technologies Used
 
-## Learn more
+- **React Native** - Cross-platform mobile development
+- **Expo** - Development platform and SDK
+- **TypeScript** - Type-safe JavaScript
+- **Expo Router** - File-based routing
+- **AsyncStorage** - Local data persistence
 
-To learn more about developing your project with Expo, look at the following resources:
+## Contributing
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test on both iOS and Android
+5. Submit a pull request
 
-## Join the community
+## License
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+This project is licensed under the MIT License.
