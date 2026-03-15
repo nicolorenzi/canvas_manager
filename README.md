@@ -4,10 +4,10 @@ A React Native mobile app for managing Canvas LMS assignments and courses. Built
 
 ## Features
 
-- 📚 View all your courses
-- 📝 Track assignments with due dates
+-  View all your courses
+-  Track assignments with due dates
 -  Cross-platform (iOS/Android)
-- 🎨 Clean, intuitive interface
+-  Clean, intuitive interface
 
 ## Setup
 
@@ -67,7 +67,6 @@ hooks/
 
 utils/
 └── canvasApi.tsx        # Canvas LMS API client
-└── notificationService.ts # Push notification service
 
 constants/
 └── Colors.ts            # App color scheme
