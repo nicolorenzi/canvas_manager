@@ -1,14 +1,18 @@
 # Canvas Manager
 
-A React Native mobile app for managing Canvas LMS assignments and courses. Built with Expo and TypeScript.
+Canvas Manager is a React Native/Expo TypeScript app for keeping track of Canvas LMS courses and assignments on mobile.
 
 ## Features
 
--  View all your courses
--  Track assignments with due dates
--  Cross-platform (iOS/Android)
--  Clean, intuitive interface
+- View your current courses and jump straight to each one
+- Track assignments due this week with urgency indicators
+- Cross-platform (iOS, Android, and web) using Expo Router
+- Minimal, responsive UI with themed components
 
+## Prerequisites
+
+- Node 18+ (or the version Expo 54 requires)
+- npm 10+ (or your preferred package manager that works with Expo)
 ## Setup
 
 1. **Install dependencies**
@@ -16,15 +20,14 @@ A React Native mobile app for managing Canvas LMS assignments and courses. Built
    npm install
    ```
 
-2. **Environment Configuration**
-   
-   Create a `.env` file in the root directory with your Canvas API credentials:
-   ```env
+2. **Configure the Canvas credentials**
+   ```bash
    EXPO_PUBLIC_CANVAS_BASE_URL=https://your-canvas-instance.instructure.com/api/v1
    EXPO_PUBLIC_CANVAS_TOKEN=your_canvas_access_token
    ```
+   Save these values in a `.env` file at the project root so Expo can pick them up at runtime.
 
-3. **Start the development server**
+3. **Run the app**
    ```bash
    npm start
    ```
@@ -36,11 +39,18 @@ A React Native mobile app for managing Canvas LMS assignments and courses. Built
 3. Generate a new access token
 4. Add the token to your `.env` file
 
-## Building
+## Available Scripts
 
-- **Android**: `npm run android`
-- **iOS**: `npm run ios`
-- **Web**: `npm run web`
+- `npm start` — launches Expo Dev Tools for the selected platform.
+- `npm run android` — builds and installs the app on a connected Android device or emulator.
+- `npm run ios` — builds and installs the app on a connected iOS device or simulator.
+- `npm run web` — runs the web version through Expo’s web bundler.
+- `npm run lint` — runs `expo lint` to enforce coding standards.
+- `npm run reset-project` — wipes and rebuilds native cache (useful when dependencies get out of sync).
+
+## Testing
+
+- `npm run lint` (spreadsheet of lint rules enforced by Expo).
 
 ## Project Structure
 
